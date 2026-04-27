@@ -52,10 +52,6 @@ def compute_hash(data_string: str):
     ).hexdigest()
 
 # --- 2. DATABASE SETUP ---
-DATABASE_URL = "sqlite:///./grades.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 class GradeDB(Base):
     __tablename__ = "grades"
@@ -77,6 +73,7 @@ class AuditLogDB(Base):
     checked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     # MUST be error_details to match your get_grades logic
     error_details = Column(String, nullable=True)
+    
 Base.metadata.create_all(bind=engine)
 
 # --- 3. SCHEMAS (PYDANTIC) ---
