@@ -15,6 +15,17 @@ from pydantic import BaseModel, ConfigDict, Field
 # --- 1. SECURITY & SALT SETUP ---
 SALT_FILE = "secret_salt.txt"
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./grades.db"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
 
 def get_or_create_salt():
     if os.path.exists(SALT_FILE):

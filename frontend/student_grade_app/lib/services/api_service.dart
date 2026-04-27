@@ -5,7 +5,7 @@ import '../models/grade_record.dart';
 import '../models/audit_log.dart';
 
 class ApiService {
-  final String baseUrl = 'http://127.0.0.1:8000';
+  final String baseUrl = 'https://grade-guardian.onrender.com';
 
   ApiService({required baseUrl});
 
