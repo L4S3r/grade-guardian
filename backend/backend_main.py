@@ -273,6 +273,10 @@ async def verify_batch(data: dict, db: Session = Depends(get_db)):
     db.commit()
     return results
 
+@app.get("/")
+async def root():
+    return {"message": "GradeGuardian API is Online", "status": "Secure"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
