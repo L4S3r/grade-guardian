@@ -15,18 +15,6 @@ from pydantic import BaseModel, ConfigDict, Field
 # --- 1. SECURITY & SALT SETUP ---
 SALT_FILE = "secret_salt.txt"
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-if not DATABASE_URL:
-    DATABASE_URL = "sqlite:///./grades.db"
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
 def get_or_create_salt():
     if os.path.exists(SALT_FILE):
         with open(SALT_FILE, "r") as f:
@@ -52,10 +40,19 @@ def compute_hash(data_string: str):
     ).hexdigest()
 
 # --- 2. DATABASE SETUP ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./grades.db"
+
 DATABASE_URL = "sqlite:///./grades.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 class GradeDB(Base):
     __tablename__ = "grades"
