@@ -74,6 +74,7 @@ class AuditLogDB(Base):
     checked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     # MUST be error_details to match your get_grades logic
     error_details = Column(String, nullable=True)
+    
 Base.metadata.create_all(bind=engine)
 
 # --- 3. SCHEMAS (PYDANTIC) ---
