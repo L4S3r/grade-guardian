@@ -26,7 +26,8 @@ SECRET_SALT = os.getenv("SECRET_SALT", "permanent-static-salt-grade-guardian")
 
 
 def build_grade_data_string(grade_id, student_id, course_code, grade, letter_grade, recorded_at):
-    ts_str    = recorded_at.replace("Z", "").split(".")[0]
+    # Extract exactly 19 chars (YYYY-MM-DDTHH:MM:SS) to ignore timezones and microseconds
+    ts_str    = recorded_at[:19]
     grade_val = "{:.1f}".format(float(grade))
     return f"{grade_id}|{student_id}|{course_code}|{grade_val}|{letter_grade}|{ts_str}"
 
