@@ -26,11 +26,15 @@ SECRET_SALT = os.getenv("SECRET_SALT", "permanent-static-salt-grade-guardian")
 
 
 def build_grade_data_string(grade_id, student_id, course_code, grade, letter_grade, recorded_at):
-    # Extract exactly 19 chars (YYYY-MM-DDTHH:MM:SS) to ignore timezones and microseconds
-    ts_str    = recorded_at[:19]
+    # Accept either a datetime object or an ISO string
+    if isinstance(recorded_at, datetime):
+        ts_str = recorded_at.strftime('%Y-%m-%dT%H:%M:%S')
+    else:
+        # Strip timezone offset (+00:00 or Z) and microseconds, keep first 19 chars
+        ts_str = str(recorded_at).replace('Z', '').replace('+00:00', '').split('.')[0][:19]
+
     grade_val = "{:.1f}".format(float(grade))
     return f"{grade_id}|{student_id}|{course_code}|{grade_val}|{letter_grade}|{ts_str}"
-
 
 def compute_hash(data_string: str):
     return hmac.new(
