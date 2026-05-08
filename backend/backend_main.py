@@ -59,15 +59,13 @@ def decode_jwt(token: str) -> dict:
 
 
 # --- 2. DATABASE SETUP ---
-DATABASE_URL = "postgresql://gradeguardianv2_0db_peb7_user:f3rwWJwsK8ZIoEhGFKZ1NBf8mmyISW8x@dpg-d7r2d78sfn5c73bku2a0-a.frankfurt-postgres.render.com/gradeguardianv2_0db_peb7"
-# DATABASE_URL = "postgresql://gradeguardianv2_0db_peb7_user:f3rwWJwsK8ZIoEhGFKZ1NBf8mmyISW8x@<YOUR_EXTERNAL_RENDER_HOSTNAME>  /gradeguardianv2_0db_peb7"
-if DATABASE_URL.startswith("postgres://"):
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 if not DATABASE_URL:
     DATABASE_URL = "sqlite:///./grades.db"
-
-DATABASE_URL = "sqlite:///./grades.db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

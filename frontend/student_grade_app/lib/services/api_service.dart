@@ -113,8 +113,8 @@ class ApiService {
 
 /// Endpoint configuration
 class ApiConfig {
-  static const String productionUrl = 'https://your-backend.onrender.com';
-  static const String developmentUrl = 'http://10.0.2.2:8000';  // Android emulator
+  static const String productionUrl = 'https://grade-guardian.onrender.com';
+  static const String developmentUrl = 'https://grade-guardian.onrender.com';  // Android emulator
 
   static String get apiUrl =>
       kReleaseMode ? productionUrl : developmentUrl;
