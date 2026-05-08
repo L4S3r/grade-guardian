@@ -1,234 +1,200 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:grade_guardian/providers/grade_provider.dart';
 import '../models/grade_record.dart';
+import '../providers/grade_provider.dart';
+import '../theme/app_theme.dart';
 import 'integrity_badge.dart';
 import 'audit_log_sheet.dart';
 
-/// Card widget to display a single grade record with integrity visualization
 class GradeCard extends StatelessWidget {
   final GradeRecord grade;
-  final VoidCallback? onTap;
   final VoidCallback? onRetryVerification;
 
   const GradeCard({
     Key? key,
     required this.grade,
-    this.onTap,
     this.onRetryVerification,
   }) : super(key: key);
 
-  void _viewLogs(BuildContext context, String gradeId) async {
-    await Provider.of<GradeProvider>(context, listen: false).verifySingleGrade(gradeId);
+  Color get _color => AppTheme.gradeColor(grade.grade);
+  Color get _colorLight => AppTheme.gradeColorLight(grade.grade);
+
+  void _viewLogs(BuildContext context) async {
+    await context.read<GradeProvider>().loadAuditLogs(grade.id);
     if (context.mounted) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) => const AuditLogSheet(),
+        backgroundColor: Colors.transparent,
+        builder: (_) => const AuditLogSheet(),
       );
     }
   }
 
-  Color get _gradeColor {
-    if (!grade.isVerified) return Colors.grey;
-
-    if (grade.grade >= 90) return Colors.green;
-    if (grade.grade >= 80) return Colors.blue;
-    if (grade.grade >= 70) return Colors.orange;
-    return Colors.red;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = !grade.isVerified;
+    final isTampered = !grade.isVerified;
 
-    return Card(
-      elevation: grade.isVerified ? 2 : 4,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: grade.isVerified
-              ? Colors.grey.shade200
-              : Colors.red.shade300,
-          width: grade.isVerified ? 1 : 2,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: isTampered ? AppTheme.dangerLight : AppTheme.surface,
+          borderRadius: AppTheme.radiusLg,
+          border: Border.all(
+            color: isTampered ? AppTheme.dangerBorder : AppTheme.cardBorder,
+            width: isTampered ? 1.5 : 1,
+          ),
+          boxShadow: isTampered ? [] : AppTheme.cardShadow,
         ),
-      ),
-      child: InkWell(
-        onTap: grade.isVerified ? onTap : null,
-        borderRadius: BorderRadius.circular(16),
-        child: Opacity(
-          opacity: grade.isVerified ? 1.0 : 0.7,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with course info and integrity badge
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            grade.courseName,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.grey.shade700 : null,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            grade.courseCode,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: Letter badge + course info + integrity badge
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 54, height: 54,
+                    decoration: BoxDecoration(
+                      color: _colorLight,
+                      borderRadius: AppTheme.radiusMd,
                     ),
-                    IntegrityBadge(
-                      isVerified: grade.isVerified,
-                      errorMessage: grade.verificationError,
-                      onRetry: onRetryVerification,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Grade display
-                Row(
-                  children: [
-                    // Numeric grade
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _gradeColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _gradeColor.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Text(
-                        grade.grade.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: _gradeColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Letter grade
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _gradeColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    child: Center(
                       child: Text(
                         grade.letterGrade,
                         style: TextStyle(
                           fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: _gradeColor,
+                          fontWeight: FontWeight.w800,
+                          color: _color,
                         ),
                       ),
                     ),
-
-                    const Spacer(),
-
-                    // Lock icon
-                    Icon(
-                      grade.isVerified ? Icons.lock : Icons.lock_open,
-                      color: grade.isVerified
-                          ? Colors.green.shade600
-                          : Colors.red.shade600,
-                      size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          grade.courseName,
+                          style: AppTheme.titleMedium.copyWith(
+                            color: isTampered ? AppTheme.textSecondary : AppTheme.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(grade.courseCode, style: AppTheme.labelSmall),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  IntegrityBadge(
+                    isVerified: grade.isVerified,
+                    errorMessage: grade.verificationError,
+                    onRetry: onRetryVerification,
+                  ),
+                ],
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-                // Timestamp + Audit Log button row
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: Colors.grey.shade600,
+              // Row 2: Numeric grade + progress bar
+              Row(
+                children: [
+                  Text(
+                    grade.grade.toStringAsFixed(1),
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      color: isTampered ? AppTheme.textSecondary : _color,
+                      letterSpacing: -0.5,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDate(grade.recordedAt),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 4),
+                  Text('/ 100', style: AppTheme.bodyMedium.copyWith(fontSize: 13, color: AppTheme.textHint)),
+                  const Spacer(),
+                  SizedBox(
+                    width: 110,
+                    child: ClipRRect(
+                      borderRadius: AppTheme.radiusFull,
+                      child: LinearProgressIndicator(
+                        value: isTampered ? 0 : grade.grade / 100,
+                        minHeight: 7,
+                        backgroundColor: AppTheme.cardBorder,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isTampered ? AppTheme.danger : _color,
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () => _viewLogs(context, grade.id),
-                      icon: const Icon(Icons.history, size: 16),
-                      label: const Text('Audit Log', style: TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
 
-                // Warning banner for tampered grades
-                if (!grade.isVerified) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade300),
-                    ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: AppTheme.cardBorder),
+              const SizedBox(height: 10),
+
+              // Row 3: Date + lock + audit log
+              Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined, size: 13, color: AppTheme.textHint),
+                  const SizedBox(width: 4),
+                  Text(_formatDate(grade.recordedAt), style: AppTheme.labelSmall),
+                  const SizedBox(width: 10),
+                  Icon(
+                    grade.isVerified ? Icons.lock_outline : Icons.lock_open_outlined,
+                    size: 13,
+                    color: grade.isVerified ? AppTheme.success : AppTheme.danger,
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _viewLogs(context),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.red.shade700,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'This record has been compromised and should not be trusted',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.red.shade900,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                        Icon(Icons.history_rounded, size: 14, color: AppTheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Audit Log',
+                          style: AppTheme.labelSmall.copyWith(color: AppTheme.primary),
                         ),
                       ],
                     ),
                   ),
                 ],
+              ),
+
+              // Tamper warning
+              if (isTampered) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.dangerBorder.withOpacity(0.3),
+                    borderRadius: AppTheme.radiusSm,
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, size: 15, color: AppTheme.danger),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'This record may have been altered — contact your academic office',
+                          style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600,
+                            color: AppTheme.danger, letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -236,10 +202,7 @@ class GradeCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }

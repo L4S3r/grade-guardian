@@ -4,7 +4,7 @@ class AuditLog {
   final String status;
   final DateTime checkedAt;
   final String? details;
-  // ADD this getter as an alias:
+
   String? get errorDetails => details;
 
   AuditLog({
@@ -15,13 +15,11 @@ class AuditLog {
     this.details,
   });
 
-  factory AuditLog.fromJson(Map<String, dynamic> json) {
-    return AuditLog(
-      id: json['id'],
-      action: json['action'],
-      status: json['status'],
-      checkedAt: DateTime.parse(json['checked_at']),
-      details: json['details'],
-    );
-  }
+  factory AuditLog.fromJson(Map<String, dynamic> json) => AuditLog(
+        id: json['id'],
+        action: json['action'] ?? 'Unknown',
+        status: json['status'] ?? 'UNKNOWN',
+        checkedAt: DateTime.parse(json['checked_at']),
+        details: json['details'],
+      );
 }

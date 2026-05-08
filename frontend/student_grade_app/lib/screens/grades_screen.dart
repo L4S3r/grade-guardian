@@ -1,128 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:grade_guardian/widgets/add_grade_dialog.dart';
 import '../providers/grade_provider.dart';
+import '../providers/student_auth_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/grade_card.dart';
 
 class GradesScreen extends StatefulWidget {
-  final String? studentId;
-
-  const GradesScreen({Key? key, this.studentId}) : super(key: key);
+  const GradesScreen({Key? key}) : super(key: key);
 
   @override
   State<GradesScreen> createState() => _GradesScreenState();
 }
 
 class _GradesScreenState extends State<GradesScreen> {
+  String _sortOption = 'Date (Newest)';
+
   @override
   void initState() {
     super.initState();
-    // Load grades when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GradeProvider>().loadGrades(studentId: widget.studentId);
+      context.read<GradeProvider>().loadGrades();
     });
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Grade Records'),
-      elevation: 0,
-      actions: [
-        // Refresh button
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: () {
-            context.read<GradeProvider>().refresh(studentId: widget.studentId);
-          },
-        ),
-      ],
-    ),
-    body: Consumer<GradeProvider>(
-      builder: (context, gradeProvider, child) {
-        // Global tamper alert banner
-        return Column(
-          children: [
-            if (gradeProvider.hasTamperedGrades)
-              _buildTamperAlertBanner(gradeProvider),
-            
-            Expanded(
-              child: _buildBody(gradeProvider),
-            ),
-          ],
-        );
-      },
-    ),
-    floatingActionButton: FloatingActionButton.extended(
-      onPressed: () {
-        showDialog(
-          context: context,
-          builder: (context) => const AddGradeDialog(),
-        );
-      },
-      label: const Text('Add Grade'),
-      icon: const Icon(Icons.add_moderator), // Represents a "Secure" add
-    ),
-  ); 
-}
+  @override
+  Widget build(BuildContext context) {
+    final student = context.watch<StudentAuthProvider>().student;
 
-  Widget _buildTamperAlertBanner(GradeProvider provider) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red.shade700,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.shade200,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: Column(
+          children: [
+            const Text('My Grades'),
+            if (student != null)
+              Text(
+                student.studentId,
+                style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w400),
+              ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: () => context.read<GradeProvider>().refresh(),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sort_rounded),
+            tooltip: 'Sort',
+            onSelected: (v) => setState(() => _sortOption = v),
+            itemBuilder: (_) => [
+              'Date (Newest)',
+              'Grade (High to Low)',
+              'Course Code (A-Z)',
+            ].map((s) => PopupMenuItem(value: s, child: Text(s))).toList(),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.report_problem,
-            color: Colors.white,
-            size: 28,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'SECURITY ALERT',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${provider.tamperedGrades.length} record(s) have been tampered with',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              _showTamperedGradesDialog(context, provider);
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Colors.white.withOpacity(0.2),
-            ),
-            child: const Text('VIEW'),
-          ),
-        ],
+      body: Consumer<GradeProvider>(
+        builder: (context, provider, _) {
+          return Column(
+            children: [
+              if (provider.hasTamperedGrades) _TamperBanner(provider: provider),
+              if (provider.isVerifying) _VerifyingBar(),
+              Expanded(child: _buildBody(provider)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -133,9 +78,9 @@ Widget build(BuildContext context) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
+            CircularProgressIndicator(color: AppTheme.primary),
             SizedBox(height: 16),
-            Text('Loading grades...'),
+            Text('Loading your grades…', style: AppTheme.bodyMedium),
           ],
         ),
       );
@@ -143,39 +88,28 @@ Widget build(BuildContext context) {
 
     if (provider.hasError) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Error loading grades',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: AppTheme.danger),
+              const SizedBox(height: 16),
+              const Text('Could not load grades', style: AppTheme.headlineMedium),
+              const SizedBox(height: 8),
+              Text(
                 provider.errorMessage ?? 'Unknown error',
+                style: AppTheme.bodyMedium,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
               ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                provider.refresh(studentId: widget.studentId);
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: provider.refresh,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -185,141 +119,197 @@ Widget build(BuildContext context) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.school_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.07),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.school_outlined, size: 56, color: AppTheme.primary),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No grades found',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            const SizedBox(height: 20),
+            const Text('No grades recorded yet', style: AppTheme.headlineMedium),
             const SizedBox(height: 8),
-            Text(
-              'Your grade records will appear here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+            const Text(
+              'Your grades will appear here once\nyour professors submit them.',
+              style: AppTheme.bodyMedium,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       );
     }
 
+    // Sort
+    var grades = provider.grades.toList();
+    if (_sortOption == 'Grade (High to Low)') {
+      grades.sort((a, b) => b.grade.compareTo(a.grade));
+    } else if (_sortOption == 'Course Code (A-Z)') {
+      grades.sort((a, b) => a.courseCode.compareTo(b.courseCode));
+    } else {
+      grades.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    }
+
     return RefreshIndicator(
-      onRefresh: () => provider.refresh(studentId: widget.studentId),
-      child: Column(
-        children: [
-          // Verification status indicator
-          if (provider.isVerifying)
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.blue.shade50,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+      onRefresh: provider.refresh,
+      color: AppTheme.primary,
+      child: CustomScrollView(
+        slivers: [
+          // ── GPA Summary Card ─────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _GpaSummaryCard(provider: provider),
+          ),
+
+          // ── Grade List ────────────────────────────────────────────
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => GradeCard(
+                grade: grades[index],
+                onRetryVerification: () => provider.refresh(),
+              ),
+              childCount: grades.length,
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── GPA Summary ──────────────────────────────────────────────────────────────
+class _GpaSummaryCard extends StatelessWidget {
+  final GradeProvider provider;
+  const _GpaSummaryCard({required this.provider});
+
+  String _gpaLabel(double gpa) {
+    if (gpa >= 3.7) return 'Summa Cum Laude';
+    if (gpa >= 3.5) return 'Magna Cum Laude';
+    if (gpa >= 3.0) return 'Good Standing';
+    if (gpa >= 2.0) return 'Satisfactory';
+    if (gpa > 0) return 'Needs Improvement';
+    return 'No verified grades';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gpa = provider.gpa;
+    final avg = provider.averageGrade;
+    final total = provider.grades.length;
+    final verified = provider.verifiedGrades.length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppTheme.primary, AppTheme.accent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: AppTheme.radiusLg,
+          boxShadow: AppTheme.elevatedShadow,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue.shade600,
-                      ),
+                  const Text(
+                    'Cumulative GPA',
+                    style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    gpa.toStringAsFixed(2),
+                    style: const TextStyle(
+                      color: Colors.white, fontSize: 46,
+                      fontWeight: FontWeight.w900, letterSpacing: -1,
                     ),
                   ),
-                  const SizedBox(width: 12),
                   Text(
-                    'Verifying grade integrity...',
-                    style: TextStyle(
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    _gpaLabel(gpa),
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
             ),
-          
-          // Grades list
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 8, bottom: 16),
-              itemCount: provider.grades.length,
-              itemBuilder: (context, index) {
-                final grade = provider.grades[index];
-                return GradeCard(
-                  grade: grade,
-                  onRetryVerification: () {
-                    provider.verifySingleGrade(grade.id);
-                  },
-                  onTap: () {
-                    // Navigate to grade detail screen
-                    // Navigator.push(context, ...);
-                  },
-                );
-              },
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _Stat('Avg Score', avg.toStringAsFixed(1)),
+                const SizedBox(height: 8),
+                _Stat('Courses', total.toString()),
+                const SizedBox(height: 8),
+                _Stat('Verified', '$verified / $total'),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  void _showTamperedGradesDialog(BuildContext context, GradeProvider provider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
+class _Stat extends StatelessWidget {
+  final String label, value;
+  const _Stat(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500)),
+        ],
+      );
+}
+
+// ── Tamper Banner ─────────────────────────────────────────────────────────────
+class _TamperBanner extends StatelessWidget {
+  final GradeProvider provider;
+  const _TamperBanner({required this.provider});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        color: AppTheme.danger,
+        child: Row(
           children: [
-            Icon(Icons.report_problem, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Tampered Records'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'The following grade records have failed integrity verification:',
-            ),
-            const SizedBox(height: 12),
-            ...provider.tamperedGrades.map(
-              (grade) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  '• ${grade.courseCode} - ${grade.courseName}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+            const Icon(Icons.report_problem, color: Colors.white, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${provider.tamperedGrades.length} record(s) may have been altered. Contact your academic office.',
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'These records may have been modified. Please contact your administrator.',
-              style: TextStyle(fontSize: 12),
-            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pop(context);
-              provider.verifyAllGrades();
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Re-verify All'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
+      );
+}
+
+// ── Verifying Bar ─────────────────────────────────────────────────────────────
+class _VerifyingBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(10),
+        color: AppTheme.primary.withOpacity(0.08),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 14, height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            SizedBox(width: 10),
+            Text('Verifying integrity…',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+          ],
+        ),
+      );
 }
