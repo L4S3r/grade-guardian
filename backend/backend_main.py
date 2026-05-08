@@ -64,7 +64,12 @@ DATABASE_URL = "postgresql://gradeguardianv2_0db_peb7_user:f3rwWJwsK8ZIoEhGFKZ1N
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./grades.db"
+
+DATABASE_URL = "sqlite:///./grades.db"
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
