@@ -9,3 +9,4 @@ frontend/student_grade_app/macos/Flutter/GeneratedPluginRegistrant.swift
 frontend/student_grade_app/windows/flutter/generated_plugin_registrant.cc
 frontend/student_grade_app/windows/flutter/generated_plugin_registrant.h
 frontend/student_grade_app/windows/flutter/generated_plugins.cmake
+backend/JWT_SECRET
