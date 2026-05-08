@@ -448,7 +448,7 @@ async def get_grades(
     results = []
     for g in grades:
         data_str = build_grade_data_string(
-            g.id, g.student_id, g.course_code, g.grade, g.recorded_at.isoformat()
+            g.id, g.student_id, g.course_code, g.grade, g.letter_grade, g.recorded_at.isoformat()
         )
         is_verified = compute_hash(data_str) == g.hash
         db.add(AuditLogDB(
@@ -482,7 +482,7 @@ async def create_grade(
     new_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).replace(microsecond=0, tzinfo=None)
     data_str = build_grade_data_string(
-        new_id, grade_data.student_id, grade_data.course_code, grade_data.grade, now.isoformat()
+        new_id, grade_data.student_id, grade_data.course_code, grade_data.grade, grade_data.letter_grade, now.isoformat()
     )
     grade_hash = compute_hash(data_str)
     db_grade = GradeDB(
@@ -550,7 +550,7 @@ async def recalculate_hashes(db: Session = Depends(get_db)):
     count = 0
     for g in grades:
         data_str = build_grade_data_string(
-            g.id, g.student_id, g.course_code, g.grade, g.recorded_at.isoformat()
+            g.id, g.student_id, g.course_code, g.grade, g.letter_grade, g.recorded_at.isoformat()
         )
         g.hash = compute_hash(data_str)
         count += 1
